@@ -1,13 +1,14 @@
 # Introducción
 
 Este informe estudia el papel de la lengua en los resultados de PISA en
-los cinco territorios bilingües de España: País Vasco, Cataluña,
-Galicia, Comunidad Valenciana e Illes Balears.
+los seis territorios bilingües de España: País Vasco, Cataluña,
+Galicia, Comunidad Valenciana, Illes Balears y Navarra (esta última
+con cooficialidad parcial, limitada a la zona vascófona).
 
 Se apoya en dos proyectos hermanos ya existentes -- [[pisa-maihda-trends]]
 (comparación internacional) y [[pisa-espana-ccaa]] (España por comunidad
 autónoma) -- reutilizando su mismo armazón metodológico (MAIHDA + INLA
-bayesiano), pero restringido a estos cinco territorios y con tres piezas
+bayesiano), pero restringido a estos seis territorios y con tres piezas
 lingüísticas nuevas que no existen en ninguno de los dos:
 
 1. **Congruencia lingüística individual**: si el alumno hizo la prueba

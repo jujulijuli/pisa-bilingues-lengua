@@ -28,8 +28,8 @@ migrante, nivel socioeconómico, educación de los padres y género)
 estima que, en 2025, la incongruencia lingüística -- hacer el examen en
 un idioma distinto al de casa -- penaliza de forma similar en los
 centros monolingües castellano (−13,4 puntos PISA; intervalo de
-confianza del 95%: −21,8 a −5,0) y en los centros monolingües en
-lengua cooficial (−11,8 puntos; intervalo: −20,1 a −3,4). Las dos
+confianza del 95%: −20,8 a −6,0) y en los centros monolingües en
+lengua cooficial (−11,8 puntos; intervalo: −19,2 a −4,4). Las dos
 estimaciones son estadísticamente indistinguibles entre sí, y las dos
 son negativas y significativas; el único tipo de centro sin
 penalización detectable es el mixto. Si el problema fuera
@@ -103,7 +103,7 @@ mejor amortiguan la incongruencia y entre los que peor lo hacen.
 
 | Comparación | Monolingüe castellano | Monolingüe cooficial |
 |---|---|---|
-| Efecto total de la incongruencia, 2025 (modelo ajustado) | −13,4 pts (IC95%: −21,8 a −5,0) | −11,8 pts (IC95%: −20,1 a −3,4) |
+| Efecto total de la incongruencia, 2025 (modelo ajustado) | −13,4 pts (IC95%: −20,8 a −6,0) | −11,8 pts (IC95%: −19,2 a −4,4) |
 | Caída del alumnado incongruente migrante vs. congruente, País Vasco (bruto) | −74 pts | −79 pts |
 | Caída del alumnado incongruente no migrante vs. congruente, País Vasco (bruto) | −20 pts | −35 pts |
 | Caída del alumnado incongruente no migrante vs. congruente, Navarra (bruto) | −26 pts | +2 pts (n.s.) |
@@ -120,16 +120,13 @@ efecto de una política lingüística concreta de otros factores que
 cambian a la vez -- composición migrante, qué colegios entran en la
 muestra cada edición, cambios socioeconómicos generales.
 
-La incorporación de Navarra al modelo estadístico ajustado (el modelo
-multinivel bayesiano que produce las cifras del primer bloque de esta
-síntesis) está pendiente en el momento de escribir esto: esas cifras
-corresponden todavía a la muestra de cinco comunidades autónomas, sin
-Navarra. Los datos descriptivos de Navarra, en cambio, ya están
-incorporados y se citan donde corresponde. El peso de Navarra en la
-muestra conjunta es moderado (en torno al 15% del alumnado analizado),
-por lo que no se espera que su incorporación cambie la imagen general
-aquí descrita, pero las cifras exactas del modelo se actualizarán
-cuando se reajuste.
+El modelo estadístico ajustado ya incorpora Navarra (las cifras de
+este resumen corresponden a las seis comunidades autónomas conjuntas).
+Su inclusión apenas modifica las estimaciones respecto a la muestra
+previa de cinco comunidades: el efecto total de la incongruencia en
+2025 se mantiene en −13,4 puntos en centros monolingües castellano y
+−11,8 puntos en monolingües cooficiales, con intervalos de confianza
+ligeramente más estrechos al aumentar el tamaño muestral.
 
 ### Síntesis {.unnumbered}
 
@@ -148,10 +145,10 @@ castellano.
 
 ## Resumen
 
-Este informe extiende el análisis de [[pisa-espana-ccaa]] a los cinco
+Este informe extiende el análisis de [[pisa-espana-ccaa]] a los seis
 territorios bilingües de España -- País Vasco, Cataluña, Galicia,
-Comunidad Valenciana e Illes Balears -- incorporando la lengua como
-factor explicativo en tres niveles:
+Comunidad Valenciana, Illes Balears y Navarra -- incorporando la
+lengua como factor explicativo en tres niveles:
 
 1. **Congruencia lingüística individual**: si el idioma en que el
    alumno realizó la prueba (`LANGTEST_QQQ`) coincide o no con el
@@ -172,7 +169,8 @@ congruencia lingüística).
 ## Alcance
 
 - Territorios: País Vasco, Cataluña, Galicia, Comunidad Valenciana,
-  Illes Balears.
+  Illes Balears y Navarra (esta última con cooficialidad parcial,
+  limitada a la zona vascófona).
 - Ediciones: 2022 y 2025 (identificación de comunidad autónoma real vía
   `REGION`); 2018 se incorpora de forma parcial mediante un proxy
   basado en idioma de examen, ver `qmd/02-datos-lengua.qmd` para las
