@@ -1,0 +1,586 @@
+# ¿Qué cambia en 2025?
+
+```{r setup-interpretacion}
+#| include: false
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+library(scales)
+library(gt)
+
+tbl_interaccion_total_efecto  <- readRDS("../data/tbl_interaccion_total_efecto.rds")
+tbl_centro_especializacion_efecto <- readRDS("../data/tbl_centro_especializacion_efecto.rds")
+composicion_migrante_global   <- readRDS("../data/composicion_migrante_global.rds")
+composicion_migrante_centro   <- readRDS("../data/composicion_migrante_centro.rds")
+composicion_migrante_ccaa     <- readRDS("../data/composicion_migrante_ccaa.rds")
+composicion_centro_ccaa       <- readRDS("../data/composicion_centro_ccaa.rds")
+ccaa_shift_2025                <- readRDS("../data/ccaa_shift_2025.rds")
+score_medio_centro_congruencia <- readRDS("../data/score_medio_centro_congruencia.rds")
+vpc_strata_by_year   <- readRDS("../data/vpc_strata_by_year.rds") |> filter(!(year == "2018" & domain == "read"))
+vpc_school_by_year   <- readRDS("../data/vpc_school_by_year.rds")
+vpc_ccaa_by_year      <- readRDS("../data/vpc_ccaa_by_year.rds")
+ranking_colegios      <- readRDS("../data/ranking_colegios_congruencia.rds")
+vasco_navarra_incong_migrante <- readRDS("../data/vasco_navarra_incong_migrante.rds")
+tiene_navarra <- "Navarra" %in% unique(as.character(vasco_navarra_incong_migrante$ccaa))
+
+tiene_immig <- file.exists("../data/tbl_immig_efecto.rds")
+if (tiene_immig) tbl_immig_efecto <- readRDS("../data/tbl_immig_efecto.rds")
+
+# Paleta fija -- una entidad, un color, en todo el capitulo (nunca se
+# recicla un color entre "tipo de centro" y "CCAA")
+col_centro <- c("Monolingüe castellano" = "#2a78d6", "Monolingüe cooficial" = "#008300", "Mixto" = "#4a3aa7")
+col_ccaa <- c("País Vasco" = "#eb6834", "Cataluña" = "#1baf7a", "Galicia" = "#eda100",
+              "Comunidad Valenciana" = "#e87ba4", "Illes Balears" = "#e34948", "Navarra" = "#2a78d6")
+col_sig <- c("positivo" = "#2a78d6", "negativo" = "#e34948", "n.s." = "#c3c2b7")
+col_nivel <- c("Estrato interseccional" = "#2a78d6", "Colegio" = "#eb6834", "CCAA" = "#4a3aa7")
+
+theme_pisa <- theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(), panel.grid.major.y = element_blank(),
+    axis.line.x = element_line(color = "#c3c2b7"),
+    legend.position = "bottom", strip.text = element_text(face = "bold")
+  )
+
+etiq_centro <- function(x) factor(case_when(
+  x == "monolingue_espanol"  ~ "Monolingüe castellano",
+  x == "monolingue_regional" ~ "Monolingüe cooficial",
+  x == "mixto"                 ~ "Mixto",
+  TRUE ~ as.character(x)
+), levels = c("Monolingüe castellano", "Monolingüe cooficial", "Mixto"))
+```
+
+Los capítulos anteriores establecen que el efecto de la incongruencia
+lingüística no es estable a lo largo de las tres ediciones: en 2018 y
+2022 no hay penalización distinguible de cero salvo en los centros
+"mixto" de 2022; en 2025 aparece, por primera vez, una penalización
+clara y generalizada. Este capítulo no añade un modelo nuevo -- toma
+los resultados ya ajustados y los mira desde varios ángulos (composición
+migrante, comunidad autónoma, puntuaciones brutas, colegio individual)
+para proponer explicaciones plausibles de por qué 2025 es distinto, sin
+pretender zanjar la cuestión con datos de tres ediciones.
+
+## Cómo se define un centro "monolingüe" o "mixto"
+
+Antes de entrar en los resultados conviene dejar clara la
+operativización de `centro_especializacion`, porque buena parte de lo
+que sigue depende de entenderla bien. La variable **no** procede de
+ningún registro administrativo sobre el modelo lingüístico oficial del
+centro: se calcula, edición a edición, a partir del idioma en que cada
+alumno evaluado por PISA hizo la prueba (`LANGTEST_QQQ`). Para cada
+colegio de la muestra se calcula qué idioma es mayoritario entre sus
+alumnos evaluados y qué proporción representa:
+
+- Si el castellano concentra el 90% o más de los alumnos evaluados,
+  el centro se clasifica como **monolingüe castellano**.
+- Si una lengua cooficial concentra el 90% o más, se clasifica como
+  **monolingüe cooficial**.
+- Si ningún idioma llega al 90% -- hay una mezcla real de alumnado
+  evaluado en castellano y en lengua cooficial --, el centro se
+  clasifica como **mixto**.
+
+Dos consecuencias importantes de esta forma de operativizar la
+variable, que conviene tener presentes en todo el capítulo. Primera:
+es una clasificación de la **muestra evaluada** en cada edición, no
+del centro en sí -- un mismo colegio podría, en principio, cambiar de
+categoría de una edición a otra sin que haya cambiado su proyecto
+lingüístico real, simplemente porque la composición de los alumnos de
+15 años evaluados ese año fue distinta. Segunda: PISA no reutiliza los
+mismos centros en cada ciclo (no es un panel), así que "monolingüe
+cooficial" en 2018 y "monolingüe cooficial" en 2025 no son, en
+general, el mismo conjunto de colegios. Esto es especialmente
+relevante para el País Vasco, como se ve más abajo.
+
+## El giro de 2025
+
+La @fig-efecto-total resume el hallazgo central: el efecto total de la
+incongruencia lingüística dentro de cada tipo de centro, con intervalo
+de confianza correcto (combinación lineal de la posterior conjunta de
+INLA, no una suma a mano de coeficientes).
+
+```{r}
+#| label: fig-efecto-total
+#| fig-cap: "Efecto total de la incongruencia lingüística, por tipo de centro y edición. Azul = intervalo de confianza al 95% fuera de 0; gris = no distinguible de 0."
+#| echo: false
+tot <- tbl_interaccion_total_efecto |>
+  mutate(
+    tipo_centro = case_when(
+      grepl("monolingue_espanol", term) ~ "Monolingüe castellano",
+      grepl("monolingue_regional", term) ~ "Monolingüe cooficial",
+      grepl("mixto", term) ~ "Mixto",
+      TRUE ~ term
+    ),
+    tipo_centro = factor(tipo_centro, levels = c("Monolingüe castellano", "Monolingüe cooficial", "Mixto")),
+    sig = case_when(ci_low_puntos > 0 ~ "positivo", ci_high_puntos < 0 ~ "negativo", TRUE ~ "n.s."),
+    year_f = factor(year)
+  )
+ggplot(tot, aes(x = estimate_puntos, y = fct_rev(tipo_centro), color = sig)) +
+  geom_vline(xintercept = 0, color = "#898781", linewidth = 0.4) +
+  geom_linerange(aes(xmin = ci_low_puntos, xmax = ci_high_puntos), linewidth = 1) +
+  geom_point(size = 2.6) +
+  facet_wrap(~year_f, ncol = 1) +
+  scale_color_manual(values = col_sig, guide = "none") +
+  labs(x = "Puntos PISA vs. alumnado congruente del mismo tipo de centro", y = NULL) +
+  theme_pisa
+```
+
+En 2025 la penalización es clara en los dos tipos de centro monolingüe
+(castellano y cooficial), y dentro de márgenes de incertidumbre amplios
+"mixto" es el único que no penaliza. Esto no es solo un efecto de la
+congruencia individual: la @fig-efecto-centro muestra que el tipo de
+centro **en sí mismo** (más allá de si el alumno concreto es congruente
+o no) ha ido perdiendo la ventaja relativa que tenía en 2018 frente al
+centro monolingüe castellano, hasta volverse una penalización clara en
+2025 para "mixto".
+
+```{r}
+#| label: fig-efecto-centro
+#| fig-cap: "Efecto principal de la especialización lingüística del centro, frente al centro monolingüe castellano (referencia), para alumnado congruente."
+#| echo: false
+centro_ef <- tbl_centro_especializacion_efecto |>
+  mutate(
+    tipo_centro = if_else(grepl("regional", term), "Monolingüe cooficial", "Mixto"),
+    sig = case_when(ci_low_puntos > 0 ~ "positivo", ci_high_puntos < 0 ~ "negativo", TRUE ~ "n.s.")
+  )
+ggplot(centro_ef, aes(x = factor(year), y = estimate_puntos, color = sig)) +
+  geom_hline(yintercept = 0, color = "#898781", linewidth = 0.4) +
+  geom_linerange(aes(ymin = ci_low_puntos, ymax = ci_high_puntos), linewidth = 1) +
+  geom_point(size = 2.6) +
+  facet_wrap(~tipo_centro) +
+  scale_color_manual(values = col_sig, guide = "none") +
+  labs(x = NULL, y = "Puntos PISA vs. monolingüe castellano (ref.)") +
+  theme_pisa
+```
+
+Dos resultados que aparecen a la vez -- la incongruencia empieza a
+penalizar y el tipo de centro por sí solo empieza a penalizar -- piden
+explicación. Las siguientes secciones exploran dos candidatas que no
+son excluyentes entre sí: el cambio en la composición migrante del
+alumnado, y el reordenamiento de qué colegios caen en cada categoría
+dentro de cada CCAA.
+
+## El efecto migrante
+
+El alumnado de origen migrante (primera o segunda generación) ha
+crecido de forma sostenida en las 5 CCAA bilingües: del 12,8% en 2018
+al 18,3% en 2022 y al 23,1% en 2025 -- casi se duplica en siete años.
+Este dato por sí solo ya es relevante para interpretar 2025, porque
+`immig` entra en el modelo como covariable propia (ver el capítulo de
+Métodos):
+si su efecto es negativo y su peso en la muestra crece, una parte de
+lo que el modelo atribuye a variables específicas de 2025 puede estar
+mediado por este cambio de composición.
+
+```{r tabla-immig}
+#| echo: false
+#| eval: !expr tiene_immig
+tbl_immig_efecto |>
+  mutate(efecto = sprintf("%+.1f [%+.1f, %+.1f]", estimate_puntos, ci_low_puntos, ci_high_puntos)) |>
+  select(year, term, efecto) |>
+  gt() |>
+  cols_label(year = "Año", term = "Categoría (vs. nativo)", efecto = "Puntos PISA (IC95%)") |>
+  tab_header(title = "Efecto de origen migrante, ajustado por el resto del modelo")
+```
+
+```{r nota-immig, results='asis'}
+#| echo: false
+if (!tiene_immig) {
+  cat(
+    "**Pendiente**: la tabla del efecto de origen migrante ajustado ",
+    "(`immig`, ya presente como covariable en el modelo principal) se ",
+    "genera con `R/03c_extraer_efecto_immig.R` a partir de los ajustes ",
+    "ya guardados en `data/maihda_fits_by_year.rds` -- no hace falta ",
+    "reajustar ningún modelo INLA. Este bloque se completa solo la ",
+    "próxima vez que se renderice el documento, una vez exista ",
+    "`data/tbl_immig_efecto.rds`.\n\n", sep = ""
+  )
+}
+```
+
+Pero el crecimiento migrante no es uniforme -- ni entre CCAA ni dentro
+de cada tipo de centro, y esa heterogeneidad es la pista más concreta
+que ofrece este análisis.
+
+```{r}
+#| label: fig-migrante-ccaa
+#| fig-cap: "Porcentaje de alumnado de origen migrante por CCAA. La línea discontinua gris es el conjunto de las 5 CCAA."
+#| echo: false
+ggplot(composicion_migrante_ccaa, aes(x = year, y = pct_no_nativo, color = ccaa)) +
+  geom_line(data = composicion_migrante_global, aes(x = year, y = pct_no_nativo), color = "#898781", linetype = "dashed", linewidth = 0.6, inherit.aes = FALSE) +
+  geom_line(linewidth = 0.9) + geom_point(size = 2.2) +
+  scale_x_continuous(breaks = c(2018, 2022, 2025)) +
+  scale_y_continuous(labels = label_percent(scale = 1), limits = c(0, NA)) +
+  scale_color_manual(values = col_ccaa, name = NULL) +
+  labs(x = NULL, y = "% de origen migrante") + theme_pisa
+```
+
+Comunidad Valenciana e Illes Balears son las que más crecen (del 14%
+al 27,6% y del 18% al 29% respectivamente); Galicia y País Vasco se
+mantienen comparativamente bajos (13,3% y 13,1% en 2025). Esta
+heterogeneidad por CCAA es justo lo que hace que "año 2025" y
+"composición migrante" no sean intercambiables como explicación: si
+fuera solo un efecto de calendario, esperaríamos un crecimiento más
+parejo entre territorios.
+
+```{r}
+#| label: fig-migrante-centro
+#| fig-cap: "Porcentaje de alumnado de origen migrante por tipo de centro. La línea discontinua gris es el conjunto de las 5 CCAA."
+#| echo: false
+ggplot(composicion_migrante_centro |> mutate(tipo_centro = etiq_centro(centro_especializacion)),
+       aes(x = year, y = pct_no_nativo, color = tipo_centro)) +
+  geom_line(data = composicion_migrante_global, aes(x = year, y = pct_no_nativo), color = "#898781", linetype = "dashed", linewidth = 0.6, inherit.aes = FALSE) +
+  geom_line(linewidth = 0.9) + geom_point(size = 2.2) +
+  scale_x_continuous(breaks = c(2018, 2022, 2025)) +
+  scale_y_continuous(labels = label_percent(scale = 1), limits = c(0, NA)) +
+  scale_color_manual(values = col_centro, name = NULL) +
+  labs(x = NULL, y = "% de origen migrante") + theme_pisa
+```
+
+Esta es la pista más directa: en 2018, el centro monolingüe castellano
+tenía la **menor** concentración de alumnado migrante de los tres
+tipos (12,4%); en 2025 tiene la **mayor** (25,0%), habiéndose
+duplicado. El centro monolingüe cooficial, en cambio, crece de forma
+más gradual (13,3% a 22,8%). El centro monolingüe castellano es
+también, precisamente, el tipo de centro donde la incongruencia se
+vuelve más negativa en 2025 (@fig-efecto-total). Esto no demuestra que
+el efecto de la incongruencia "sea en realidad" el efecto migrante --
+el modelo ya ajusta por `immig` como covariable principal -- pero sí
+sugiere una hipótesis concreta y comprobable en el futuro: si el
+efecto de `immig` no varía por tipo de centro (el modelo actual lo
+asume constante, sin interacción con `centro_especializacion`), un
+cambio tan marcado en la concentración migrante dentro de un tipo de
+centro concreto podría dejar residuo en el coeficiente de
+incongruencia, que sí correlaciona fuertemente con origen migrante por
+construcción (el 77% del alumnado con lengua de casa de inmigración es,
+por definición, incongruente). Contrastar esta hipótesis con rigor
+requeriría una interacción `immig × centro_especializacion` explícita
+en el modelo -- una extensión natural, no incluida aquí para no
+multiplicar de nuevo los términos de interacción sin una razón sólida
+previa.
+
+## El reordenamiento por CCAA
+
+La mezcla de tipos de centro dentro de cada CCAA tampoco es estable de
+una edición a otra. La @fig-mezcla-ccaa lo muestra para las cinco, y
+la @tbl-ccaa-shift cuantifica el cambio 2022→2025 en cada una.
+
+```{r}
+#| label: fig-mezcla-ccaa
+#| fig-cap: "Mezcla de tipo de centro dentro de cada CCAA, por edición (% de alumnado evaluado)."
+#| echo: false
+mix <- composicion_centro_ccaa |> mutate(tipo_centro = etiq_centro(centro_especializacion))
+ggplot(mix, aes(x = factor(year), y = pct_alumnos, fill = tipo_centro)) +
+  geom_col(width = 0.65) +
+  facet_wrap(~ccaa, nrow = 1) +
+  scale_fill_manual(values = col_centro, name = NULL) +
+  scale_y_continuous(labels = label_percent(scale = 1)) +
+  labs(x = NULL, y = "% de alumnado") +
+  theme_pisa + theme(panel.spacing.x = unit(1, "lines"))
+```
+
+```{r}
+#| label: tbl-ccaa-shift
+#| echo: false
+ccaa_shift_2025 |>
+  mutate(across(c(y2022, y2025, delta_2022_2025), ~round(., 1)),
+         tipo_centro = etiq_centro(centro_especializacion)) |>
+  select(ccaa, tipo_centro, y2022, y2025, delta_2022_2025) |>
+  gt() |>
+  cols_label(ccaa = "CCAA", tipo_centro = "Tipo de centro", y2022 = "% alumnado 2022",
+                 y2025 = "% alumnado 2025", delta_2022_2025 = "Cambio (pp)") |>
+  tab_header(title = "Cambio en la mezcla de tipo de centro, 2022 → 2025, por CCAA")
+```
+
+El caso del País Vasco es el más llamativo con diferencia: el
+porcentaje de alumnado evaluado en un centro que la muestra clasifica
+como monolingüe castellano cae del 46% al 27%; el que cae en
+monolingüe cooficial sube del 7% al 52%; el de "mixto" baja del 46% al
+21%. Es un giro completo en apenas una edición. Como se explicó en la
+sección de operativización, esto casi con toda seguridad **no**
+refleja un cambio real en el modelo lingüístico de los centros vascos
+en tres años -- el sistema educativo vasco (modelos A/B/D) cambia
+mucho más despacio -- sino una combinación de qué colegios entraron en
+la muestra PISA de cada ciclo y de dónde cae, para cada uno, el umbral
+del 90% que define la categoría.
+
+Pero conviene no generalizar el caso vasco al resto: **no es el mismo
+patrón en las cinco CCAA**. Cataluña y Comunidad Valenciana se mueven
+en la misma dirección que País Vasco -- más alumnado en centros
+monolingües cooficiales, menos en "mixto" --, aunque con mucho menos
+recorrido. Galicia e Illes Balears hacen justo lo contrario en cuanto
+al destino del cambio: pierden peso en monolingüe castellano (-21 pp
+en Galicia, -6 pp en Baleares) pero ese alumnado no pasa
+mayoritariamente a monolingüe cooficial, sino a "mixto" (+22 pp en
+Galicia, +15 pp en Baleares) -- justo la categoría que en el País Vasco
+pierde peso. Es decir, el reordenamiento muestral de 2025 es real y
+generalizado, pero su *dirección* no es uniforme: unas CCAA convergen
+hacia más segregación lingüística aparente por centro, otras hacia
+más mezcla. Esto es un argumento adicional para no interpretar el
+efecto agregado de `centro_especializacion` en 2025 (@fig-efecto-centro)
+como si reflejara una dinámica única y común a las cinco CCAA bilingües.
+
+## Contraste con las puntuaciones brutas
+
+Todo lo anterior son coeficientes ajustados. Para no perder de vista
+los datos que hay detrás, la @fig-score-bruto muestra la puntuación
+media bruta (sin ajustar por composición), congruente frente a
+incongruente, por tipo de centro y edición.
+
+```{r}
+#| label: fig-score-bruto
+#| fig-cap: "Puntuación media bruta (promedio de las 3 pruebas, ponderada), congruente vs. incongruente, sin ajustar por composición."
+#| echo: false
+sc <- score_medio_centro_congruencia |>
+  filter(!is.na(congruencia_linguistica)) |>
+  mutate(tipo_centro = etiq_centro(centro_especializacion),
+         congruencia = if_else(congruencia_linguistica == "congruente", "Congruente", "Incongruente"))
+ggplot(sc, aes(x = year, y = score_medio, color = congruencia, linetype = congruencia)) +
+  geom_line(linewidth = 0.9) + geom_point(size = 2.2) +
+  facet_wrap(~tipo_centro) +
+  scale_x_continuous(breaks = c(2018, 2022, 2025)) +
+  scale_color_manual(values = c("Congruente" = "#2a78d6", "Incongruente" = "#e34948"), name = NULL) +
+  scale_linetype_manual(values = c("Congruente" = "solid", "Incongruente" = "22"), name = NULL) +
+  labs(x = NULL, y = "Puntuación PISA media (bruta)") + theme_pisa
+```
+
+El patrón bruto es coherente con el ajustado, con un matiz relevante
+en "mixto": la brecha congruente-incongruente en centros monolingües
+castellano se **amplía** claramente hacia 2025 (la incongruente cae
+más que la congruente), y en "mixto" ocurre lo contrario -- la brecha
+prácticamente se cierra, porque la puntuación congruente cae más que
+la incongruente. Es exactamente el patrón que muestra el modelo
+ajustado, y confirma que el hallazgo no es un artefacto de cómo se
+ajustan las covariables.
+
+## ¿En qué nivel pesa más la desigualdad?
+
+Con los tres niveles del modelo disponibles (estrato interseccional,
+colegio, CCAA), la @fig-vpc-nivel los pone lado a lado.
+
+```{r}
+#| label: fig-vpc-nivel
+#| fig-cap: "VPC del modelo nulo (sin covariables) por nivel. Estrato = media de matemáticas y ciencias en 2018 (lectura excluida, ver limitaciones del capítulo anterior); sombreado = IC95%."
+#| echo: false
+vpc_estrato <- vpc_strata_by_year |> group_by(year) |>
+  summarise(vpc_mean = mean(vpc_mean), vpc_lower = mean(vpc_lower), vpc_upper = mean(vpc_upper), .groups = "drop") |>
+  mutate(nivel = "Estrato interseccional")
+vpc_col <- vpc_school_by_year |> mutate(nivel = "Colegio") |> select(year, vpc_mean, vpc_lower, vpc_upper, nivel)
+vpc_ccaa_d <- vpc_ccaa_by_year |> mutate(nivel = "CCAA") |> select(year, vpc_mean, vpc_lower, vpc_upper, nivel)
+vpc_all <- bind_rows(vpc_estrato, vpc_col, vpc_ccaa_d) |>
+  mutate(year = as.integer(year), nivel = factor(nivel, levels = c("Estrato interseccional", "Colegio", "CCAA")))
+ggplot(vpc_all, aes(x = year, y = vpc_mean, color = nivel, fill = nivel)) +
+  geom_ribbon(aes(ymin = vpc_lower, ymax = vpc_upper), alpha = 0.12, color = NA) +
+  geom_line(linewidth = 0.9) + geom_point(size = 2.4) +
+  facet_wrap(~nivel, scales = "free_y") +
+  scale_x_continuous(breaks = c(2018, 2022, 2025)) +
+  scale_y_continuous(labels = label_percent(scale = 100)) +
+  scale_color_manual(values = col_nivel, guide = "none") +
+  scale_fill_manual(values = col_nivel, guide = "none") +
+  labs(x = NULL, y = "VPC") + theme_pisa
+```
+
+El estrato interseccional (posición social y lingüística del alumnado)
+sigue siendo, con diferencia, el nivel que más organiza la
+desigualdad (19%-24%). El colegio se mantiene notablemente estable
+(14%-15%). El nivel que más cambia es la CCAA: del 2,5% en 2018 al
+1,4% en 2022 (con un intervalo tan ancho que tocaba el 0, ver
+limitaciones) al 5,7% en 2025 -- esta vez con un intervalo claramente
+por encima de 0. Es la confirmación cuantitativa, a nivel de varianza
+total, de lo que las figuras anteriores muestran cualitativamente: en
+2025 importa más que antes en qué CCAA concreta está un alumno, y eso
+es coherente con el reordenamiento de tipos de centro visto más
+arriba, ya que la mezcla de tipo de centro es justamente una de las
+cosas que distingue a una CCAA de otra.
+
+## Colegios que se salen del patrón: ranking MAIHDA
+
+Más allá del efecto medio por tipo de centro, `R/04_colegios_interaccion_congruencia.R`
+ajusta una pendiente aleatoria propia de cada colegio para la
+incongruencia lingüística, sobre todos los efectos fijos ya
+establecidos. Un colegio con pendiente positiva es uno donde el
+alumnado incongruente rinde mejor de lo que predice su tipo de centro;
+uno con pendiente negativa, peor. El color de la @fig-ranking marca el
+**tipo de centro**, no la significación (que ya es visible directamente
+en el gráfico: un intervalo que no cruza el cero) -- para que se vea de
+un vistazo si cada tipo de centro ocupa una zona propia del ranking o
+si, por el contrario, los tres tipos están mezclados a lo largo de todo
+el recorrido.
+
+```{r}
+#| label: fig-ranking
+#| fig-cap: "Pendiente colegio × incongruencia lingüística (puntos PISA), coloreada por tipo de centro, colegios ordenados de menor a mayor dentro de cada edición. Solo colegios con 5 o más alumnos incongruentes."
+#| echo: false
+rk <- ranking_colegios |>
+  filter(n_incongruentes >= 5) |>
+  mutate(tipo_centro = fct_drop(etiq_centro(centro_especializacion))) |>
+  group_by(year) |> arrange(slope_puntos, .by_group = TRUE) |> mutate(orden = row_number()) |> ungroup()
+ggplot(rk, aes(x = orden, y = slope_puntos, color = tipo_centro)) +
+  geom_hline(yintercept = 0, color = "#898781", linewidth = 0.4) +
+  geom_linerange(aes(ymin = ci_low_puntos, ymax = ci_high_puntos), linewidth = 0.35, alpha = 0.55) +
+  geom_point(size = 0.9) +
+  facet_wrap(~year, nrow = 1) +
+  scale_color_manual(values = col_centro, name = NULL) +
+  labs(x = "Colegios, ordenados de menor a mayor pendiente", y = "Puntos PISA (pendiente propia del colegio)") +
+  theme_pisa + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.major.x = element_blank())
+```
+
+```{r resumen-ranking}
+#| echo: false
+resumen_rk_tipo <- ranking_colegios |> filter(n_incongruentes >= 5) |>
+  mutate(
+    tipo_centro = fct_drop(etiq_centro(centro_especializacion)),
+    sig = case_when(ci_low_puntos > 0 ~ "positivo", ci_high_puntos < 0 ~ "negativo", TRUE ~ "n.s.")
+  ) |>
+  count(tipo_centro, sig) |> tidyr::pivot_wider(names_from = sig, values_from = n, values_fill = 0) |>
+  select(tipo_centro, positivo, n.s., negativo)
+resumen_rk_tipo |> gt() |>
+  cols_label(tipo_centro = "Tipo de centro", positivo = "Pendiente positiva", n.s. = "No significativa", negativo = "Pendiente negativa") |>
+  tab_header(title = "Colegios por tipo de centro y significación de la pendiente (tres ediciones, >= 5 alumnos incongruentes)")
+```
+
+Los tres tipos de centro están mezclados a lo largo de **todo** el
+recorrido del ranking, en las tres ediciones: no hay una zona del
+gráfico que sea "solo cooficial" o "solo castellano". Contando colegios
+de las tres ediciones juntas, los monolingües cooficiales tienen 125
+con pendiente positiva significativa y 128 con pendiente negativa
+significativa -- prácticamente empatados --, y los monolingües
+castellano 61 positivos frente a 42 negativos. Ningún tipo de centro
+concentra el patrón en una sola dirección: dentro de cada tipo hay
+colegios que claramente amortiguan la incongruencia lingüística y
+colegios que claramente la agravan, en número comparable. Un mensaje
+que atribuya el resultado de 2025 a un único modelo lingüístico de
+centro no encaja con esta heterogeneidad.
+
+Una corrección honesta respecto a una lectura anterior de este mismo
+ranking: no es una historia de un puñado de "colegios ejemplares"
+frente a la mayoría. En 2025, 74 colegios tienen pendiente positiva
+significativa y 66 pendiente negativa significativa, de 214 con
+suficientes alumnos incongruentes para estimarla con algo de
+precisión. Eso es muchos más de los que cabría esperar solo por azar
+con un intervalo al 95% (en torno al 2,5% en cada dirección si no
+hubiera heterogeneidad real), así que la heterogeneidad entre colegios
+es genuina -- pero es heterogeneidad en ambos sentidos, no solo "buenas
+prácticas" por descubrir. Los colegios en los extremos del ranking (con
+pendientes de 80-140 puntos en cualquiera de las dos direcciones)
+tienen, casi todos, un número reducido de alumnos incongruentes (5-40):
+conviene tratar el orden exacto del top-1 al top-5 como hipótesis para
+explorar caso por caso, no como conclusión cerrada -- el hallazgo
+robusto es el conteo agregado de colegios significativos, no el
+ranking puntual.
+
+## País Vasco (y Navarra): la incongruencia según origen migrante {#sec-vasco-navarra-migrante}
+
+```{r}
+#| echo: false
+#| results: asis
+if (!tiene_navarra) {
+  cat(
+    "**Nota**: en el momento de escribir esto, Navarra todavía no está ",
+    "incorporada a los datos del proyecto (ver `R/01_load_data.R` -- ya está ",
+    "añadida al filtro de CCAA, falta volver a ejecutar el pipeline completo: ",
+    "`01_load_data.R` → `02_prepare_variables.R` → `07_vasco_navarra_incongruencia_migrante.R`, ",
+    "sin necesidad de reajustar los modelos INLA para esta sección concreta). ",
+    "Lo que sigue se limita, por ahora, a País Vasco.\n\n", sep = ""
+  )
+}
+```
+
+La sección "El efecto migrante" planteaba una hipótesis concreta: que
+parte de la penalización asociada a la incongruencia lingüística podría
+estar arrastrada por el origen migrante del alumnado incongruente, más
+que por la incongruencia en sí. País Vasco (y Navarra, en cuanto se
+incorporen sus datos) permite ponerla a prueba directamente, porque
+`congruencia_detalle` distingue, dentro del alumnado incongruente de un
+centro monolingüe, entre dos perfiles de origen muy distinto:
+
+- **Incongruente, no migrante**: su lengua de casa es la *otra* lengua
+  oficial del territorio (p. ej. un alumno de casa vascófona en un
+  centro monolingüe castellano, o de casa castellanohablante en un
+  centro monolingüe cooficial).
+- **Incongruente, migrante**: su lengua de casa es una lengua de
+  inmigración, ni castellano ni cooficial.
+
+```{r}
+#| label: fig-vasco-migrante
+#| fig-cap: "Puntos PISA de diferencia frente al alumnado congruente del mismo tipo de centro, para cada perfil de incongruencia. Datos brutos (sin ajustar), tres ediciones agrupadas."
+#| echo: false
+col_migrante <- c("No migrante" = "#2a78d6", "Migrante" = "#e34948")
+plot_vnm <- vasco_navarra_incong_migrante |>
+  filter(perfil != "Congruente") |>
+  mutate(
+    tipo_centro = fct_drop(etiq_centro(centro_especializacion)),
+    perfil_lbl = factor(if_else(perfil == "Incongruente, migrante", "Migrante", "No migrante"),
+                         levels = c("No migrante", "Migrante"))
+  )
+ggplot(plot_vnm, aes(x = perfil_lbl, y = caida_vs_congruente, fill = perfil_lbl)) +
+  geom_col(width = 0.55) +
+  facet_grid(ccaa ~ tipo_centro) +
+  scale_fill_manual(values = col_migrante, guide = "none") +
+  labs(x = NULL, y = "Puntos PISA vs. alumnado congruente del mismo centro") +
+  theme_pisa
+```
+
+```{r}
+#| label: tbl-vasco-migrante
+#| echo: false
+vasco_navarra_incong_migrante |>
+  mutate(tipo_centro = fct_drop(etiq_centro(centro_especializacion)),
+         across(c(score_medio, caida_vs_congruente), ~round(., 1))) |>
+  select(ccaa, tipo_centro, perfil, score_medio, n_alumnos, caida_vs_congruente) |>
+  arrange(ccaa, tipo_centro, perfil) |>
+  gt() |>
+  cols_label(ccaa = "CCAA", tipo_centro = "Tipo de centro", perfil = "Perfil",
+             score_medio = "Puntuación media", n_alumnos = "n",
+             caida_vs_congruente = "Diferencia vs. congruente") |>
+  tab_header(title = "Incongruencia en centros monolingües, según origen migrante")
+```
+
+El patrón es consistente en los dos tipos de centro monolingüe del País
+Vasco: la caída del alumnado incongruente **no migrante** es
+comparativamente moderada (-20 puntos en centros monolingües castellano,
+-35 en monolingües cooficiales) -- del orden de lo que cabría esperar
+simplemente por hacer el examen en una lengua distinta a la de casa.
+La caída del alumnado incongruente **migrante** es muy superior en
+ambos tipos de centro (-74 y -79 puntos respectivamente), más del doble
+que la del alumnado no migrante. Dicho de otro modo: dentro del grupo
+"incongruente" de un centro monolingüe, no todos los alumnos parten de
+la misma situación, y agregar a ambos perfiles bajo una sola etiqueta de
+"incongruencia" oculta una diferencia grande.
+
+Esto es coherente con la lectura ya avanzada en la sección del efecto
+migrante: la incongruencia lingüística correlaciona fuertemente con el
+origen migrante (el modelo principal ya ajusta por `immig` como
+covariable, pero no hay, todavía, una interacción explícita
+`immig × congruencia` ni `immig × centro_especializacion`), así que
+parte de lo que agregados más gruesos atribuyen a "ser incongruente"
+puede estar reflejando, en realidad, las dificultades específicas del
+alumnado de origen migrante recién llegado a un sistema educativo en
+una lengua que no es la de su casa -- con independencia de cuál sea esa
+lengua. Conviene leer con la debida cautela las celdas con menos casos
+(el perfil "migrante" en centros monolingües cooficiales tiene un
+n modesto), pero la dirección del patrón es clara y va en la misma
+línea en los dos tipos de centro.
+
+## Síntesis
+
+
+
+Ningún elemento de este capítulo prueba, por sí solo, qué explica el
+giro de 2025 -- con tres ediciones y un rediseño de la variable de
+congruencia a mitad de proyecto, cualquier conclusión causal sería
+prematura. Lo que sí ofrece es una lectura convergente: el alumnado de
+origen migrante casi se duplica en el conjunto de las 5 CCAA entre
+2018 y 2025, ese crecimiento es más marcado precisamente dentro de los
+centros monolingües castellano (donde la incongruencia pasa a penalizar
+con más fuerza), la mezcla de tipos de centro dentro de cada CCAA se
+reordena de forma sustancial (sobre todo en País Vasco), y la varianza
+organizada por CCAA se dispara en 2025 justo cuando ese reordenamiento
+ocurre. Las puntuaciones brutas, sin ningún ajuste, muestran el mismo
+patrón que el modelo. Y a nivel de colegio individual, hay
+heterogeneidad real y sustancial en ambas direcciones más allá del
+tipo de centro. La hipótesis más concreta que se puede formular con
+esto -- que el efecto de incongruencia de 2025 está, al menos en
+parte, capturando un cambio de composición migrante no completamente
+absorbido por el efecto principal de `immig` -- es comprobable con una
+extensión del modelo (interacción `immig × centro_especializacion`) y
+queda como línea de trabajo natural, no resuelta aquí.

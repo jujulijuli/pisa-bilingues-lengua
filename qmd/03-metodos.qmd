@@ -1,0 +1,149 @@
+# Métodos
+
+```{r setup-metodos}
+#| include: false
+library(dplyr)
+library(gt)
+library(ggplot2)
+```
+
+## Modelo MAIHDA
+
+Modelo mixto multinivel bayesiano (INLA), con lectura/matemáticas/
+ciencias como respuesta multivariante correlacionada a nivel de
+estrato interseccional.
+
+Estrato interseccional de **5 dimensiones**: género × educación
+parental × cuartil ESCS × origen migrante × **congruencia lingüística**
+(2 × 3 × 4 × 3 × 2 = 144 estratos posibles) -- a diferencia de los
+proyectos hermanos (4 dimensiones, 72 estratos), aquí la congruencia
+lingüística se trata como una dimensión más de la posición
+interseccional del alumnado, no solo como covariable.
+
+## Covariables de nivel colegio
+
+- **Especialización lingüística del centro**: idioma dominante de
+  examen entre los alumnos evaluados de ese colegio (monolingüe
+  castellano / monolingüe en lengua cooficial / mixto). Ver más abajo
+  cómo se construye exactamente y su robustez frente al umbral elegido.
+- **Interacción congruencia × especialización del centro**: pregunta
+  central del proyecto -- si el efecto de la congruencia individual
+  depende del tipo de centro. El coeficiente de interacción por sí
+  solo (`interaccion_lengua_efecto`) da el *extra* de la incongruencia
+  en un colegio "monolingüe cooficial" o "mixto" **respecto al
+  monolingüe castellano** (nivel de referencia). Para el efecto *total*
+  de la incongruencia dentro de cada tipo de colegio, el modelo define
+  además combinaciones lineales (`inla.make.lincomb()`) que suman el
+  coeficiente principal de congruencia + el de interacción
+  correspondiente, con el intervalo de confianza calculado
+  directamente de la posterior conjunta (no sumando a mano los IC de
+  cada coeficiente por separado, que ignoraría su covarianza) --
+  resultado en `interaccion_total_efecto` /
+  `data/tbl_interaccion_total_efecto.rds`.
+- **Público/privado**.
+
+### Cómo se construye la especialización lingüística del centro
+
+La variable no procede de ningún registro administrativo del proyecto
+lingüístico del centro. Se calcula, colegio a colegio y edición a
+edición, a partir del idioma en que cada alumno evaluado por PISA hizo
+la prueba (`LANGTEST_QQQ`, sin colapsar -- se distingue euskera,
+catalán, gallego y valenciano, no solo "cooficial"): para cada colegio
+se identifica qué idioma concentra la mayor proporción de sus alumnos
+evaluados, y esa proporción (`pct_dominante_colegio`) es la que decide
+la categoría, con un umbral del 90%:
+
+- Si el castellano concentra ≥90% del alumnado evaluado del centro →
+  **monolingüe castellano**.
+- Si una lengua cooficial concentra ≥90% → **monolingüe cooficial**.
+- Si ningún idioma alcanza el 90% → **mixto**.
+
+El umbral del 90% no se fijó de forma arbitraria: antes de construirlo
+se comprobó que entre el 69% y el 72% de los colegios (según la
+edición) son **completamente homogéneos** (100% de sus alumnos
+evaluados en el mismo idioma), y que la mayoría del resto está muy
+cerca de esa homogeneidad total, como muestra la @tbl-descriptivo-umbral.
+
+```{r tbl-descriptivo-umbral}
+#| echo: false
+readRDS("../data/descriptivo_centro_umbral.rds") |>
+  mutate(across(c(pct_100, pct_menos_10, p10, p25, mediana, p75, p90, minimo), ~round(., 1))) |>
+  gt() |>
+  cols_label(
+    year = "Edición", n_colegios = "Colegios", pct_100 = "% colegios 100% homogéneos",
+    pct_menos_10 = "% con < 10 alumnos evaluados", p10 = "P10", p25 = "P25",
+    mediana = "Mediana", p75 = "P75", p90 = "P90", minimo = "Mínimo"
+  ) |>
+  tab_spanner(label = "Percentiles de % de dominancia del idioma mayoritario", columns = c(p10, p25, mediana, p75, p90, minimo)) |>
+  tab_header(title = "Distribución de la dominancia lingüística por colegio")
+```
+
+Con una mediana del 100% y un percentil 25 por encima del 96% en las
+tres ediciones, el umbral del 90% cae en una zona de la distribución
+con relativamente pocos colegios -- no es un corte que divida la masa
+de colegios por la mitad, sino uno que separa un grupo mayoritario muy
+homogéneo de una minoría claramente mixta.
+
+### Sensibilidad del umbral
+
+Para comprobar que la elección del 90% no determina por sí sola los
+resultados, se ha recalculado la clasificación con umbrales
+alternativos, del 70% al 100%. La @fig-sens-umbral muestra qué
+porcentaje de alumnado quedaría clasificado como "mixto" según el
+umbral elegido, en las tres ediciones.
+
+```{r}
+#| label: fig-sens-umbral
+#| fig-cap: "Porcentaje de alumnado clasificado como 'mixto' según el umbral de dominancia lingüística exigido al centro. La línea vertical marca el umbral usado en el proyecto (90%)."
+#| echo: false
+col_year <- c("2018" = "#2a78d6", "2022" = "#eb6834", "2025" = "#1baf7a")
+mix_sens <- readRDS("../data/sensibilidad_umbral_centro.rds") |>
+  filter(centro_especializacion_u == "mixto") |>
+  mutate(year = factor(year))
+ggplot(mix_sens, aes(x = umbral, y = pct_alumnos, color = year)) +
+  geom_vline(xintercept = 90, color = "#898781", linetype = "dashed", linewidth = 0.5) +
+  geom_line(linewidth = 0.9) + geom_point(size = 2.2) +
+  scale_color_manual(values = col_year, name = NULL) +
+  scale_x_continuous(breaks = c(70, 75, 80, 85, 90, 95, 100)) +
+  labs(x = "Umbral de dominancia exigido para no ser 'mixto' (%)", y = "% de alumnado en centros 'mixto'") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom")
+```
+
+La relación es suave y monótona, sin saltos bruscos alrededor del 90%
+-- moverse un poco en cualquier dirección no cambia cualitativamente
+el tamaño del grupo "mixto". Para cuantificarlo directamente: entre el
+umbral usado (90%) y dos alternativas razonables (80% y 95%), solo
+cambia de categoría entre un 5% y un 9% de los colegios, que agrupan
+entre un 5% y un 9% del alumnado, según la edición (@tbl-flip-umbral).
+La clasificación es razonablemente robusta a esta decisión.
+
+```{r tbl-flip-umbral}
+#| echo: false
+readRDS("../data/flip_umbral_centro.rds") |>
+  mutate(pct_colegios_cambia = round(pct_colegios_cambia, 1),
+         pct_alumnos_cambia = round(pct_alumnos_cambia, 1)) |>
+  select(year, umbral_alt, n_colegios_cambia, n_colegios_total, pct_colegios_cambia,
+         n_alumnos_cambia, n_alumnos_total, pct_alumnos_cambia) |>
+  gt() |>
+  cols_label(
+    year = "Edición", umbral_alt = "Umbral alternativo (%)",
+    n_colegios_cambia = "Colegios que cambian", n_colegios_total = "Colegios totales",
+    pct_colegios_cambia = "% colegios que cambian",
+    n_alumnos_cambia = "Alumnos que cambian", n_alumnos_total = "Alumnos totales",
+    pct_alumnos_cambia = "% alumnado que cambia"
+  ) |>
+  tab_header(title = "Colegios que cambiarían de categoría frente al umbral base (90%)")
+```
+
+## Niveles de agrupación
+
+Alumno < colegio < comunidad autónoma (real en 2022/2025; ausente en
+2018, ver `qmd/02-datos-lengua.qmd`).
+
+Ver `R/03_model_maihda_inla.R` para la especificación completa (mismas
+opciones de INLA que los proyectos hermanos: estandarización de la
+puntuación, `int.strategy = "eb"`, extracción de VPC/PCV vía muestreo
+de marginales), y `R/06_sensibilidad_umbral_centro.R` para la
+construcción y el análisis de sensibilidad de la especialización
+lingüística del centro descritos arriba.

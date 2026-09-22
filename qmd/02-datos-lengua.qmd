@@ -1,0 +1,87 @@
+# Datos: variables lingüísticas y su cobertura
+
+## Fuentes por edición
+
+| Edición | Fuente | Identificación de CCAA |
+|---|---|---|
+| 2018 | Microdatos INEE nacional | `STRATUM` (no `REGION`/`SUBNATIO` -- ver más abajo) |
+| 2022 | Microdatos INEE nacional | `REGION` real (19 valores) |
+| 2025 | Fichero internacional OCDE, filtrado a España | `REGION` real (19 valores, tabla de códigos propia -- no coincide con la de 2022) |
+
+## 2018: identificación de CCAA vía `STRATUM`, no vía `REGION`
+
+En el fichero de 2018, `SUBNATIO` colapsa toda España a un único código
+y no existe columna `REGION` -- por eso una primera revisión concluyó
+(erróneamente) que 2018 no tenía identificación de comunidad autónoma.
+Revisando `STRATUM` se encontró que sí la tiene, codificada en su
+etiqueta de texto junto con público/privado y, solo para País Vasco, el
+modelo lingüístico:
+
+```
+ESP - stratum 21: Galicia, public
+ESP - stratum 34: Basque Country, public, AB
+ESP - stratum 35: Basque Country, public, D
+```
+
+Con esto, 2018 se identifica con la misma fiabilidad que 2022 y 2025 --
+no hace falta ningún proxy. Ver `stratum_lookup_2018` en
+`R/01_load_data.R` para la tabla completa (43 estratos), verificada
+contra las etiquetas de valor reales del fichero.
+
+## Bonus: una primera aproximación al modelo lingüístico vasco (AB/D)
+
+`STRATUM` da, sin coste adicional, una clasificación AB/D para País
+Vasco:
+
+- **2018**: las 4 combinaciones (público AB, público D, privado AB,
+  privado D) -- cobertura completa.
+- **2022**: solo distingue AB/D para centros **privados**; el público
+  queda como una única categoría sin dividir.
+- **2025**: `STRATUM` no trae esa distinción en absoluto.
+
+Esto **no** es la clasificación oficial completa (A/B/D) del Gobierno
+Vasco que se iba a revisar por separado -- es una aproximación parcial,
+útil como primer vistazo mientras esa revisión no esté lista.
+
+## Variables lingüísticas individuales
+
+- `LANGTEST_QQQ`: idioma en que se administró la prueba/cuestionario.
+- `LANGN`: idioma que el alumno habla en casa.
+
+Ver `R/01_load_data.R` y `R/02_prepare_variables.R` para la
+construcción exacta de `congruencia_linguistica` y
+`centro_especializacion` a partir de estas dos variables.
+
+## `congruencia_linguistica`: quién queda dentro y quién queda fuera
+
+`lang_test` y `lang_home` se colapsan a 3 categorías (`espanol`,
+`cooficial`, `otro_idioma`) antes de compararlas. El aranés se asimila
+a `cooficial` (es cooficial en el Valle de Arán junto con catalán y
+castellano, aunque PISA no lo trate como una de sus 4 lenguas
+cooficiales armonizadas): 14 alumnos afectados.
+
+El alumnado cuya lengua de casa es una lengua de inmigración
+(`otro_idioma` -- ni castellano ni cooficial) no se excluye de
+`congruencia_linguistica`. Una primera versión de la variable lo
+marcaba como `NA`, con el argumento de que la congruencia lingüística
+no "respondía bien" a su situación; sin embargo, como `lang_test` en
+España es siempre castellano o cooficial (PISA no administra el examen
+en otras lenguas), este alumnado es, por construcción, siempre
+`incongruente` -- es precisamente el caso de mayor interés
+(escolarización en una lengua, cooficial o castellana, distinta de la
+de casa), no un caso ambiguo que deba descartarse. Excluirlo eliminaba
+del análisis justo a la subpoblación donde el 77% es de origen
+migrante.
+
+Con este tratamiento, `NA` en `congruencia_linguistica` queda
+reservado al dato realmente ausente (`lang_test` o `lang_home` sin
+respuesta): baja de 2.582 alumnos (8,9%) a 555 (1,9%) sobre el pool de
+29.086. `congruencia_detalle` (6 categorías, solo descriptiva) separa
+además los dos tipos de incongruencia con lengua de casa `otro_idioma`
+(examen en castellano vs. examen en lengua cooficial) de los dos tipos
+de incongruencia puramente castellano/cooficial.
+
+Si algún análisis concreto necesita replicar la versión anterior
+(restringida al eje castellano/cooficial), basta con filtrar
+explícitamente por `lang_home_3cat == "otro_idioma"` en ese análisis
+puntual -- ya no es el comportamiento por defecto de la variable.

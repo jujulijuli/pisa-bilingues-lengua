@@ -1,0 +1,37 @@
+project:
+  type: book
+  output-dir: _output
+
+book:
+  title: "El papel de la lengua en PISA: territorios bilingües de España"
+  date: today
+  chapters:
+    - index.qmd
+    - qmd/01-introduccion.qmd
+    - qmd/02-datos-lengua.qmd
+    - qmd/03-metodos.qmd
+    - qmd/04-resultados.qmd
+    - qmd/05-interpretacion-2025.qmd
+
+# Mismo motivo que en pisa-espana-ccaa (ver ese _quarto.yml): con
+# `freeze: auto` cada render choca con los ficheros `._*` (AppleDouble)
+# que macOS crea en discos externos/red -- se usa `freeze: false` +
+# `cache: true` para evitarlo sin perder la caché de knitr por chunk.
+execute:
+  freeze: false
+  cache: true
+
+bibliography: references.bib
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: cosmo
+    code-fold: true
+    code-tools: true
+    fig-width: 8
+    fig-height: 5
+
+lang: es

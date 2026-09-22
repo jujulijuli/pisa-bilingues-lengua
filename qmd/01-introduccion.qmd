@@ -1,0 +1,28 @@
+# Introducción
+
+Este informe estudia el papel de la lengua en los resultados de PISA en
+los cinco territorios bilingües de España: País Vasco, Cataluña,
+Galicia, Comunidad Valenciana e Illes Balears.
+
+Se apoya en dos proyectos hermanos ya existentes -- [[pisa-maihda-trends]]
+(comparación internacional) y [[pisa-espana-ccaa]] (España por comunidad
+autónoma) -- reutilizando su mismo armazón metodológico (MAIHDA + INLA
+bayesiano), pero restringido a estos cinco territorios y con tres piezas
+lingüísticas nuevas que no existen en ninguno de los dos:
+
+1. **Congruencia lingüística individual**: si el alumno hizo la prueba
+   en el mismo idioma que habla en casa, o en uno distinto.
+2. **Especialización lingüística del centro**, y su interacción con la
+   congruencia individual -- ¿el efecto de la (in)congruencia depende
+   de en qué tipo de colegio está el alumno?
+3. **Público/privado**, como en los proyectos hermanos, para no perder
+   esa comparación.
+
+## Preguntas de investigación
+
+- ¿Se asocia la congruencia entre idioma de examen e idioma de casa con
+  el rendimiento, una vez controlado el resto de factores individuales?
+- ¿Modula la especialización lingüística del centro esa asociación?
+- ¿Cuánta varianza entre colegios y entre comunidades autónomas se
+  explica por estos factores lingüísticos, frente a la que ya explican
+  la composición social y público/privado?

@@ -1,0 +1,352 @@
+# Resultados
+
+```{r setup-resultados}
+#| include: false
+library(dplyr)
+library(gt)
+library(scales)
+
+congruencia_efecto            <- readRDS("../data/tbl_congruencia_efecto.rds")
+interaccion_lengua_efecto     <- readRDS("../data/tbl_interaccion_lengua_efecto.rds")
+interaccion_total_efecto      <- readRDS("../data/tbl_interaccion_total_efecto.rds")
+pubpriv_efecto                <- readRDS("../data/tbl_pubpriv_efecto.rds")
+# EXCLUSION DELIBERADA: el termino iid3d que genera este VPC de
+# estrato usa en esta version de INLA un
+# prior Wishart CONJUNTO sobre toda la matriz de precision 3x3 (ver
+# INLA::inla.models()$latent$iid3d$hyper -- df=7, escala identidad por
+# defecto), no priors independientes por dominio como los que si se
+# pudieron estabilizar en school_id_num/ccaa_id con un prior PC (ver
+# R/03_model_maihda_inla.R). En el limite de varianza casi-cero (la
+# misma familia de patologia numerica que causaba el crash de ccaa_id
+# en 2022) la transformacion precision->varianza de una de las 3
+# dimensiones puede degenerar SILENCIOSAMENTE en vez de fallar con
+# error -- eso es lo que paso en 2018/lectura: VPC medio = 183%, un
+# valor matematicamente imposible (un VPC es una proporcion de
+# varianza, tiene que estar en [0,1]). Arreglarlo de raiz requeriria
+# elegir a mano otros parametros para el prior Wishart conjunto y
+# validarlo con un analisis de sensibilidad -- se deja como limitacion
+# documentada para trabajo futuro (ver seccion final) en vez de
+# arriesgar un prior sin verificar sobre la metrica central del
+# analisis. Aqui se excluye esa celda de tablas e interpretacion.
+vpc_strata_by_year_raw <- readRDS("../data/vpc_strata_by_year.rds")
+vpc_strata_invalida    <- vpc_strata_by_year_raw |> filter(year == 2018, domain == "read")
+vpc_strata_by_year     <- vpc_strata_by_year_raw |> anti_join(vpc_strata_invalida, by = c("year", "domain"))
+pcv_strata_by_year            <- readRDS("../data/pcv_strata_by_year.rds")
+vpc_school_by_year            <- readRDS("../data/vpc_school_by_year.rds")
+vpc_ccaa_by_year              <- readRDS("../data/vpc_ccaa_by_year.rds")
+
+# Ablacion opcional (R/03b_vpc_ablation_congruencia.R) -- compara el VPC
+# de estrato con 4 dimensiones (sin congruencia) frente a 5 (con
+# congruencia), sobre las MISMAS 5 CCAA. Si aun no se ha ejecutado, esta
+# seccion se salta sin dar error -- ver mas abajo.
+vpc_ablation_path <- "../data/vpc_ablation_comparacion.rds"
+tiene_ablation <- file.exists(vpc_ablation_path)
+if (tiene_ablation) {
+  vpc_ablation_comparacion <- readRDS(vpc_ablation_path) |>
+    filter(!(year == 2018 & domain == "read"))  # misma exclusion que arriba
+}
+
+fmt_puntos <- function(est, lo, hi) {
+  # vectorizada: est/lo/hi llegan como columnas enteras desde mutate(),
+  # no como un unico valor -- if/else (BUG real, R >= 4.3 lo rechaza con
+  # "the condition has length > 1") tiene que ser ifelse() vectorizado.
+  sig <- !((lo < 0) & (hi > 0))
+  sprintf(
+    "%+.1f [%+.1f, %+.1f]%s",
+    est, lo, hi, ifelse(sig, "", " (n.s.)")
+  )
+}
+```
+
+Este capítulo resume los resultados de las tres piezas del proyecto --
+congruencia lingüística individual, su interacción con la
+especialización lingüística del centro, y el efecto público/privado --
+más un apartado final sobre cuánta desigualdad total organizan estos
+factores (VPC/PCV), con una guía de lectura para quien no esté
+familiarizado con estos términos. Todas las cifras están en el modelo
+principal, ajustado por género, educación parental, cuartil ESCS y
+origen migrante, con las tres puntuaciones (matemáticas, lectura,
+ciencias) modeladas conjuntamente. "n.s." significa que el intervalo de
+confianza del 95% cruza el cero -- no se puede descartar que el efecto
+real sea nulo.
+
+## Congruencia lingüística individual
+
+Efecto medio de que el examen se haga en un idioma distinto al que se
+habla en casa (independientemente del tipo de colegio), en puntos PISA:
+
+```{r tabla-congruencia}
+#| echo: false
+congruencia_efecto |>
+  mutate(efecto = fmt_puntos(estimate_puntos, ci_low_puntos, ci_high_puntos)) |>
+  select(year, efecto) |>
+  gt() |>
+  cols_label(year = "Año", efecto = "Efecto de la incongruencia (puntos PISA)") |>
+  tab_header(title = "Efecto principal de la incongruencia lingüística")
+```
+
+El patrón no es estable en el tiempo: en 2018 y 2022 no hay efecto
+distinguible de cero: en 2025 sí aparece un efecto negativo y claro. Ver
+más abajo (interacción) para el desglose por tipo de colegio, que matiza
+bastante esta cifra media.
+
+## Interacción congruencia × especialización del centro
+
+Esta es la pregunta central del proyecto: ¿el efecto de la incongruencia
+depende de si el colegio es mayoritariamente monolingüe (en castellano o
+en lengua cooficial) o mixto? Dos tablas complementarias:
+
+**a) El extra de la interacción por sí sola**, respecto al colegio
+monolingüe castellano (nivel de referencia) -- cuánto MÁS o MENOS
+penaliza la incongruencia en cada tipo de colegio, comparado con lo que
+penaliza en uno monolingüe castellano:
+
+```{r tabla-interaccion}
+#| echo: false
+interaccion_lengua_efecto |>
+  mutate(
+    tipo_centro = if_else(grepl("mixto", term), "Mixto", "Monolingüe cooficial"),
+    efecto = fmt_puntos(estimate_puntos, ci_low_puntos, ci_high_puntos)
+  ) |>
+  select(year, tipo_centro, efecto) |>
+  gt() |>
+  cols_label(year = "Año", tipo_centro = "Tipo de centro", efecto = "Extra vs. monolingüe castellano (puntos)") |>
+  tab_header(title = "Interacción: extra de la incongruencia por tipo de centro")
+```
+
+**b) El efecto TOTAL de la incongruencia dentro de cada tipo de
+colegio** (combinación lineal calculada directamente de la posterior de
+INLA -- no una suma a mano de los dos coeficientes, que daría un
+intervalo de confianza incorrecto al ignorar su covarianza):
+
+```{r tabla-interaccion-total}
+#| echo: false
+interaccion_total_efecto |>
+  mutate(
+    tipo_centro = case_when(
+      grepl("monolingue_espanol", term) ~ "Monolingüe castellano",
+      grepl("monolingue_regional", term) ~ "Monolingüe cooficial",
+      grepl("mixto", term) ~ "Mixto",
+      TRUE ~ term
+    ),
+    efecto = fmt_puntos(estimate_puntos, ci_low_puntos, ci_high_puntos)
+  ) |>
+  select(year, tipo_centro, efecto) |>
+  gt() |>
+  cols_label(year = "Año", tipo_centro = "Tipo de centro", efecto = "Efecto total de la incongruencia (puntos)") |>
+  tab_header(title = "Efecto total de la incongruencia, por tipo de centro")
+```
+
+Lectura: en 2018 no hay penalización distinguible de cero en ningún tipo
+de colegio. En 2022 la única penalización clara está en los colegios
+"mixto". En 2025 se invierte: la penalización clara aparece en los
+colegios monolingües (castellano y cooficial), y "mixto" deja de tener un
+efecto distinguible de cero. No es un patrón estable a lo largo de las 3
+ediciones -- y conviene recordar que "mixto" no son los mismos colegios
+de una edición a otra (se recalcula cada año según quién se examina ese
+año), así que parte del cambio puede deberse a qué centros concretos
+caen en cada categoría, no a un cambio dentro de los mismos centros.
+
+## Público/privado
+
+```{r tabla-pubpriv}
+#| echo: false
+pubpriv_efecto |>
+  mutate(efecto = fmt_puntos(estimate_puntos, ci_low_puntos, ci_high_puntos)) |>
+  select(year, efecto) |>
+  gt() |>
+  cols_label(year = "Año", efecto = "Efecto privado vs. público (puntos PISA)") |>
+  tab_header(title = "Efecto público/privado, ajustado")
+```
+
+La brecha se va cerrando con el tiempo y deja de ser distinguible de
+cero en 2025 -- el patrón más limpio y consistente de los tres, y el
+único que se repite igual en dos ejecuciones distintas del modelo.
+
+## ¿Cuánta desigualdad total organizan estos factores? (VPC y PCV)
+
+::: {.callout-note}
+## Guía de lectura para quien no trabaje habitualmente con estos modelos
+
+Las tablas anteriores responden "¿cuánto cambia la puntuación MEDIA
+según congruencia, tipo de colegio o año?" -- son diferencias entre
+grupos concretos. El **VPC** (variance partition coefficient,
+"coeficiente de partición de varianza") responde una pregunta distinta:
+de toda la variabilidad que hay entre las puntuaciones de los alumnos,
+¿qué proporción está organizada por pertenecer a un grupo determinado
+(un estrato social, un colegio, una comunidad autónoma), frente a la
+variabilidad que hay entre alumnos que están en el MISMO grupo? Se
+expresa como un porcentaje: un VPC del 20% en "estrato" significa que
+el 20% de toda la diferencia de puntuaciones entre alumnos se debe a en
+qué estrato social-lingüístico están, y el 80% restante es variación
+entre alumnos del mismo estrato (talento, esfuerzo, suerte el día del
+examen, factores no medidos...).
+
+El **PCV** (proportional change in variance, "cambio proporcional de
+varianza") mide otra cosa: cuánto de esa variabilidad ENTRE estratos se
+explica al añadir congruencia/especialización/público-privado como
+variables del modelo, comparado con un modelo que no las tiene. Un PCV
+del 50% quiere decir que la mitad de las diferencias entre estratos se
+explican por estas variables; el resto son diferencias entre estratos
+que estas variables no capturan.
+
+Ninguna de las dos cosas dice si un efecto concreto es "grande" o
+"pequeño" en puntos PISA -- para eso están las tablas de arriba. El
+VPC/PCV dice si esos efectos, sumados, organizan mucha o poca
+desigualdad total entre el alumnado.
+:::
+
+### VPC de estrato: ¿pesa la posición social-lingüística?
+
+```{r tabla-vpc-strata}
+#| echo: false
+vpc_strata_by_year |>
+  mutate(vpc = sprintf("%.1f%% [%.1f%%, %.1f%%]", vpc_mean * 100, vpc_lower * 100, vpc_upper * 100)) |>
+  select(year, domain, vpc) |>
+  tidyr::pivot_wider(names_from = domain, values_from = vpc) |>
+  gt() |>
+  cols_label(year = "Año") |>
+  tab_header(title = "VPC de estrato interseccional (5 dimensiones, con congruencia)")
+```
+
+Entre el 17% y el 26% de la variabilidad total en puntuaciones queda
+organizada por la posición interseccional del alumnado (género × educ.
+parental × ESCS × origen migrante × congruencia lingüística). Es un VPC
+alto para estándares de MAIHDA -- el estrato social-lingüístico pesa de
+verdad en estas 5 CCAA.
+
+*Nota:* se excluye de esta tabla (y del resto del capítulo) la celda
+2018/lectura, que con 5 dimensiones da un VPC inválido (183%, fuera del
+rango posible [0,1]) por una inestabilidad numérica del prior de
+`iid3d` -- ver la limitación documentada al final del capítulo.
+
+```{r vpc-strata-por-que, results='asis'}
+#| echo: false
+if (tiene_ablation) {
+  cat("### ¿Cuánto de eso se debe específicamente a la congruencia lingüística?\n\n")
+  cat(
+    "Comparación, DENTRO de las mismas 5 CCAA, entre el estrato de 4 ",
+    "dimensiones (sin congruencia, igual que `pisa-espana-ccaa`) y el de ",
+    "5 (con congruencia):\n\n", sep = ""
+  )
+} else {
+  cat(
+    "**Pendiente**: para saber cuánto de este VPC se debe específicamente ",
+    "a haber añadido la congruencia lingüística como 5ª dimensión (y no a ",
+    "la restricción muestral a estas 5 CCAA), corre ",
+    "`R/03b_vpc_ablation_congruencia.R` -- compara, dentro de la misma ",
+    "muestra, el VPC con y sin esa dimensión. Este bloque se actualizará ",
+    "solo la próxima vez que se renderice el documento, una vez exista ",
+    "`data/vpc_ablation_comparacion.rds`.\n\n"
+  )
+}
+```
+
+```{r tabla-vpc-ablation}
+#| echo: false
+#| eval: !expr tiene_ablation
+vpc_ablation_comparacion |>
+  mutate(
+    vpc_4dim = percent(vpc_mean_4dim, accuracy = 0.1),
+    vpc_5dim = percent(vpc_mean_5dim, accuracy = 0.1),
+    diferencia = sprintf("%+.1f pp", diferencia_pp)
+  ) |>
+  select(year, domain, vpc_4dim, vpc_5dim, diferencia) |>
+  gt() |>
+  cols_label(
+    year = "Año", domain = "Dominio",
+    vpc_4dim = "VPC sin congruencia (4 dim)",
+    vpc_5dim = "VPC con congruencia (5 dim)",
+    diferencia = "Diferencia (puntos porcentuales)"
+  ) |>
+  tab_header(title = "Contraste dentro de las mismas 5 CCAA: efecto de añadir congruencia")
+```
+
+### PCV de estrato: ¿explican estas variables las diferencias entre estratos?
+
+```{r tabla-pcv-strata}
+#| echo: false
+pcv_strata_by_year |>
+  mutate(pcv = sprintf("%.0f%% [%.0f%%, %.0f%%]", pcv_mean * 100, pcv_lower * 100, pcv_upper * 100)) |>
+  select(year, domain, pcv) |>
+  tidyr::pivot_wider(names_from = domain, values_from = pcv) |>
+  gt() |>
+  cols_label(year = "Año") |>
+  tab_header(title = "PCV de estrato (congruencia + especialización + público/privado)")
+```
+
+**Aviso de estabilidad**: el PCV es una métrica conocida por ser
+inestable con muestras moderadas, y aquí se nota sobre todo en
+"lectura" -- el valor de 2018 (intervalo de −781% a +89%) no es
+interpretable y no debería citarse. Matemáticas y ciencias son más
+estables: entre el 35% y el 70% de las diferencias entre estratos se
+explican por congruencia + especialización + público/privado, con el
+pico en 2018 y algo menor en 2022. Para cualquier uso posterior
+(publicación, presentación), recomiendo apoyarse en matemáticas/ciencias
+y tratar "lectura" con cautela.
+
+Esta inestabilidad de "lectura" ya no es solo una sospecha: el VPC de
+estrato subyacente para 2018/lectura (5 dimensiones) sale directamente
+inválido (183%, ver nota más arriba), confirmando que el problema es
+numérico -- el prior Wishart conjunto del término `iid3d` (ver
+Limitaciones) -- y no una peculiaridad sustantiva de "lectura" como
+dominio.
+
+### VPC de colegio y de comunidad autónoma
+
+```{r tabla-vpc-colegio-ccaa}
+#| echo: false
+vpc_school_by_year |>
+  mutate(nivel = "Colegio") |>
+  bind_rows(vpc_ccaa_by_year |> mutate(nivel = "Comunidad autónoma")) |>
+  mutate(vpc = sprintf("%.1f%% [%.1f%%, %.1f%%]", vpc_mean * 100, vpc_lower * 100, vpc_upper * 100)) |>
+  select(year, nivel, vpc) |>
+  tidyr::pivot_wider(names_from = nivel, values_from = vpc) |>
+  gt() |>
+  cols_label(year = "Año") |>
+  tab_header(title = "VPC de colegio y de CCAA")
+```
+
+El peso del colegio se mantiene estable entre ediciones (en torno al
+12-15%) **aunque el efecto específico de público/privado pierda fuerza
+y significación hacia 2025** -- es decir, el colegio sigue importando
+tanto como siempre, pero lo que explica esa importancia parece
+desplazarse de público/privado hacia otra cosa (posiblemente la
+especialización lingüística, dado el patrón de la interacción de
+arriba). El VPC de comunidad autónoma es bajo en las 5 CCAA bilingües
+(0,4%-4,3%) comparado con España completa en el proyecto hermano
+(2,3%-7,6%) -- esperable, al restringir a territorios más parecidos
+entre sí se reduce la varianza entre regiones.
+
+## Lectura de conjunto y limitaciones
+
+La pieza más sólida y consistente de las tres es el cierre de la brecha
+público/privado: se repite igual en dos ejecuciones del modelo y tiene
+un patrón temporal limpio (18,0 → 15,6 → 4,6 puntos, dejando de ser
+significativo en 2025). La interacción congruencia × especialización del
+centro es la más interesante pero también la menos estable: el tipo de
+colegio donde la incongruencia penaliza más cambia entre 2022 (mixto) y
+2025 (monolingües), sin un patrón claro en 2018 -- con solo 3 ediciones
+y con "mixto"/"monolingüe cooficial" recalculados cada año (no son los
+mismos centros de una edición a otra), yo lo trataría como una primera
+pieza de evidencia, no como una tendencia consolidada. El VPC de estrato
+confirma que la posición social-lingüística organiza una parte
+sustancial de la desigualdad total en estas 5 CCAA (17%-26%), con la
+salvedad de que separar cuánto de eso aporta específicamente la
+congruencia lingüística (frente a la restricción a estos territorios)
+requiere la comparación de `R/03b_vpc_ablation_congruencia.R`. El PCV es
+la pieza menos fiable, sobre todo en lectura, y no debería citarse sin
+antes investigar esa inestabilidad.
+
+**Limitación técnica documentada**: el VPC/PCV de estrato se apoyan en
+un término `iid3d` (correlación entre matemáticas/lectura/ciencias) que
+en esta versión de INLA usa un prior Wishart conjunto sobre toda la
+matriz de precisión 3×3, sin la opción de un prior PC independiente por
+dominio como el que sí estabilizó `school_id_num`/`ccaa_id` (ver
+`R/03_model_maihda_inla.R`). Para 2018/lectura esto produjo un VPC
+matemáticamente inválido (183%), que se excluye de este capítulo (ver
+nota en la sección de VPC de estrato). Una futura revisión podría
+explorar otros parámetros para ese prior Wishart (grados de libertad y/
+o matriz de escala) con un análisis de sensibilidad -- comprobando que
+matemáticas/ciencias no cambian mientras lectura deja de degenerar --
+antes de confiar en ese dominio-año concreto.

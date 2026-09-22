@@ -1,0 +1,186 @@
+---
+title: "El papel de la lengua en PISA: territorios bilingües de España"
+date: today
+lang: es
+---
+
+## Resumen ejecutivo: ¿explica el modelo lingüístico cooficial la caída de 2025? {.unnumbered}
+
+En el debate público sobre los resultados de PISA 2025 en los
+territorios bilingües de España -- de forma particularmente intensa en
+el País Vasco -- se ha planteado que la caída de puntuaciones
+respondería al empleo de las lenguas cooficiales en la enseñanza, en
+particular cuando se impone a alumnado cuya lengua materna es el
+castellano. Esta sección reúne lo que el análisis estadístico de las
+tres últimas ediciones de PISA (2018, 2022, 2025) en las seis
+comunidades autónomas con lengua cooficial (País Vasco, Cataluña,
+Galicia, Comunidad Valenciana, Illes Balears y Navarra) permite decir
+al respecto, con sus alcances y sus límites. El desarrollo completo,
+con gráficos y tablas, está en los capítulos de [Resultados](qmd/04-resultados.qmd)
+e [Interpretación](qmd/05-interpretacion-2025.qmd).
+
+### Qué muestran los datos {.unnumbered}
+
+**La penalización de 2025 no se concentra en los centros de lengua
+cooficial.** El modelo estadístico ajustado (que combina nivel de
+estudiante, colegio y comunidad autónoma, y controla por origen
+migrante, nivel socioeconómico, educación de los padres y género)
+estima que, en 2025, la incongruencia lingüística -- hacer el examen en
+un idioma distinto al de casa -- penaliza de forma similar en los
+centros monolingües castellano (−13,4 puntos PISA; intervalo de
+confianza del 95%: −21,8 a −5,0) y en los centros monolingües en
+lengua cooficial (−11,8 puntos; intervalo: −20,1 a −3,4). Las dos
+estimaciones son estadísticamente indistinguibles entre sí, y las dos
+son negativas y significativas; el único tipo de centro sin
+penalización detectable es el mixto. Si el problema fuera
+específicamente el empleo forzado de la lengua cooficial frente al
+castellano, cabría esperar una penalización marcadamente mayor -- o
+exclusiva -- en los centros cooficiales, y eso no es lo que el modelo
+encuentra.
+
+**Dentro de los centros monolingües, el origen migrante concentra la
+mayor parte de la brecha, en los dos tipos de centro por igual.**
+Separando al alumnado incongruente de los centros monolingües del País
+Vasco según su origen -- nativo (su lengua de casa es la otra lengua
+oficial del territorio) o migrante (su lengua de casa es una lengua de
+inmigración, ni castellano ni euskera) --, la caída de puntuación del
+alumnado migrante (−74 puntos en monolingüe castellano, −79 en
+monolingüe cooficial) es entre dos y cuatro veces mayor que la del
+alumnado nativo incongruente (−20 y −35 puntos respectivamente).
+Dentro del propio grupo "incongruente", el origen migrante concentra
+la mayor parte de la caída, en ambos tipos de centro casi por igual.
+
+**El caso concreto que señala el debate no muestra una penalización
+clara en Navarra.** En los datos de Navarra, el alumnado con lengua de
+casa castellana escolarizado en un centro monolingüe cooficial obtiene
+una puntuación media prácticamente idéntica -- ligeramente superior, de
+hecho -- a la de sus compañeros congruentes del mismo tipo de centro
+(diferencia de +1,8 puntos, sin ajustar por otros factores). En el
+País Vasco esa misma comparación sí muestra una diferencia negativa
+(−35 puntos), pero de magnitud similar a la que se observa en sentido
+inverso -- alumnado de casa vascófona en centros monolingües
+castellano, dentro de la misma comunidad (−20 puntos). El patrón no
+apunta de forma sistemática y exclusiva en la dirección que señala el
+debate.
+
+**El crecimiento del alumnado de origen migrante no se concentra en
+los centros de lengua cooficial.** El porcentaje de alumnado de origen
+migrante en el conjunto de las seis comunidades ha pasado del 13,0% en
+2018 al 23,2% en 2025. Ese crecimiento es, si acaso, más pronunciado
+en los centros monolingües castellano (del 13,0% al 25,9%) que en los
+monolingües cooficiales (del 13,2% al 22,4%). El cambio demográfico
+que coincide en el tiempo con la caída de puntuaciones pesa igual o
+más sobre los centros de lengua castellana.
+
+**Las puntuaciones brutas, sin ajustar, confirman el mismo patrón.**
+En 2025 la brecha entre alumnado congruente e incongruente es de 37
+puntos en los centros monolingües castellano y de 30 puntos en los
+monolingües cooficiales -- mayor en los primeros, no en los segundos.
+
+**El tipo de centro explica una fracción menor de la desigualdad
+total que la composición del alumnado.** Descomponiendo la varianza
+total de puntuaciones, la posición interseccional del alumnado
+(género, educación de los padres, nivel socioeconómico, origen
+migrante y congruencia lingüística combinados) explica entre el 19% y
+el 24% de la varianza según la edición; el colegio, entre el 14% y el
+15%; la comunidad autónoma, entre el 1,4% y el 5,7%. La comunidad
+autónoma -- y, dentro de ella, el modelo lingüístico predominante -- es
+el nivel que menos peso tiene de los tres.
+
+**Dentro de cada tipo de centro hay una heterogeneidad muy grande, en
+ambas direcciones.** Ajustando una pendiente propia por colegio para
+el efecto de la incongruencia lingüística, tanto los centros
+monolingües castellano como los cooficiales tienen números comparables
+de colegios que claramente amortiguan la incongruencia y de colegios
+que claramente la agravan (monolingüe castellano: 61 colegios con
+pendiente positiva significativa frente a 42 con pendiente negativa,
+sumando las tres ediciones; monolingüe cooficial: 125 frente a 128,
+prácticamente empatado). Ningún tipo de centro se comporta de forma
+monolítica: hay colegios de ambos modelos lingüísticos entre los que
+mejor amortiguan la incongruencia y entre los que peor lo hacen.
+
+### En cifras {.unnumbered}
+
+| Comparación | Monolingüe castellano | Monolingüe cooficial |
+|---|---|---|
+| Efecto total de la incongruencia, 2025 (modelo ajustado) | −13,4 pts (IC95%: −21,8 a −5,0) | −11,8 pts (IC95%: −20,1 a −3,4) |
+| Caída del alumnado incongruente migrante vs. congruente, País Vasco (bruto) | −74 pts | −79 pts |
+| Caída del alumnado incongruente no migrante vs. congruente, País Vasco (bruto) | −20 pts | −35 pts |
+| Caída del alumnado incongruente no migrante vs. congruente, Navarra (bruto) | −26 pts | +2 pts (n.s.) |
+| % alumnado de origen migrante, 2018 → 2025 | 13,0% → 25,9% | 13,2% → 22,4% |
+| Brecha congruente/incongruente, 2025 (bruto) | −37 pts | −30 pts |
+| Colegios con pendiente propia significativa (3 ediciones): positiva / negativa | 61 / 42 | 125 / 128 |
+
+### Límites del análisis {.unnumbered}
+
+Estos resultados son correlacionales, no causales: PISA es un diseño
+transversal (tres fotografías independientes, no un seguimiento de los
+mismos alumnos ni de los mismos colegios) y no permite aislar el
+efecto de una política lingüística concreta de otros factores que
+cambian a la vez -- composición migrante, qué colegios entran en la
+muestra cada edición, cambios socioeconómicos generales.
+
+La incorporación de Navarra al modelo estadístico ajustado (el modelo
+multinivel bayesiano que produce las cifras del primer bloque de esta
+síntesis) está pendiente en el momento de escribir esto: esas cifras
+corresponden todavía a la muestra de cinco comunidades autónomas, sin
+Navarra. Los datos descriptivos de Navarra, en cambio, ya están
+incorporados y se citan donde corresponde. El peso de Navarra en la
+muestra conjunta es moderado (en torno al 15% del alumnado analizado),
+por lo que no se espera que su incorporación cambie la imagen general
+aquí descrita, pero las cifras exactas del modelo se actualizarán
+cuando se reajuste.
+
+### Síntesis {.unnumbered}
+
+El conjunto de la evidencia disponible no es coherente con una
+explicación que sitúe el origen de la caída de puntuaciones de 2025
+específicamente en la imposición de las lenguas cooficiales frente al
+castellano. La penalización de la incongruencia lingüística aparece,
+en magnitud similar, en los dos tipos de centro monolingüe; el factor
+que más se asocia a la caída es el origen migrante del alumnado
+incongruente, no el tipo de lengua vehicular; y dentro de cada modelo
+lingüístico hay una heterogeneidad de colegios demasiado grande para
+sostener un relato único sobre "el" modelo cooficial o "el" modelo
+castellano.
+
+---
+
+## Resumen
+
+Este informe extiende el análisis de [[pisa-espana-ccaa]] a los cinco
+territorios bilingües de España -- País Vasco, Cataluña, Galicia,
+Comunidad Valenciana e Illes Balears -- incorporando la lengua como
+factor explicativo en tres niveles:
+
+1. **Congruencia lingüística individual**: si el idioma en que el
+   alumno realizó la prueba (`LANGTEST_QQQ`) coincide o no con el
+   idioma que habla en casa (`LANGN`).
+2. **Interacción individuo-colegio**: cómo modula la "especialización
+   lingüística del centro" (idioma dominante de examen entre los
+   alumnos evaluados de ese colegio, y su grado de homogeneidad) el
+   efecto de la congruencia individual sobre la puntuación.
+3. **Público/privado**, como covariable de nivel colegio, igual que en
+   los dos proyectos hermanos.
+
+Reutiliza el mismo armazón metodológico MAIHDA + INLA bayesiano de
+[[pisa-maihda-trends]] y [[pisa-espana-ccaa]], con la congruencia
+lingüística individual incorporada como una dimensión más del estrato
+interseccional (género × educación parental × ESCS × origen migrante ×
+congruencia lingüística).
+
+## Alcance
+
+- Territorios: País Vasco, Cataluña, Galicia, Comunidad Valenciana,
+  Illes Balears.
+- Ediciones: 2022 y 2025 (identificación de comunidad autónoma real vía
+  `REGION`); 2018 se incorpora de forma parcial mediante un proxy
+  basado en idioma de examen, ver `qmd/02-datos-lengua.qmd` para las
+  limitaciones específicas de esa edición.
+
+## Estructura
+
+1. Introducción
+2. Datos: variables lingüísticas y su cobertura por edición
+3. Métodos
+4. Resultados
